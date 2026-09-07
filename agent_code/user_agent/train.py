@@ -22,7 +22,7 @@ def setup_training(self):
     self.alpha = 0.01
     self.gamma = 0.95
 
-    self.epsilon = 1.0
+    self.epsilon = 0.1
 
     self.episode_reward = 0
     self.episode_length = 0

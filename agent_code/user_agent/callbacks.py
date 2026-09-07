@@ -2,7 +2,7 @@ import numpy as np
 import random
 import pickle
 ACTIONS = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'BOMB', 'WAIT']
-NUM_FEATURES = 6
+NUM_FEATURES = 5
 
 
 def setup(self):
@@ -15,16 +15,16 @@ def setup(self):
 
     
     #self.weights = np.zeros(NUM_FEATURES) 
-    self.epsilon = 1.0
+    self.epsilon = 0.1
 
-def get_explosion_zone(bombs):
+def get_explosion_zone(bomb_position):
     # Keep only tuples where countdown (t) equals 0
     # Keep only bomb's coordinates where countdown (t) is 0 
-    bomb_position = [coords for coords, t in bombs if t == 0]
+
     explosion_tiles = []
     for bomb in bomb_position:
         explosion_tiles.append(bomb)
-        for i in range(1,3):
+        for i in range(1,4):
             explosion_tiles.append((bomb[0]+i,bomb[1]))
             explosion_tiles.append((bomb[0]-i,bomb[1]))
             explosion_tiles.append((bomb[0],bomb[1]+i))
@@ -53,10 +53,29 @@ def state_to_features(game_state: dict, action: str) -> np.ndarray:
 
     # Simulate where action 'a' takes us
     new_x, new_y = x, y
-    if action == 'UP': new_y -= 1
-    elif action == 'DOWN': new_y += 1
-    elif action == 'LEFT': new_x -= 1
-    elif action == 'RIGHT': new_x += 1
+    if action == 'UP':
+        if y == 0:
+            new_y = y
+        else:
+            new_y -= 1
+        
+    elif action == 'DOWN':
+        if y == 16:
+            new_y = y
+        else:
+            new_y += 1
+
+    elif action == 'LEFT':
+        if x == 0:
+            new_x = x
+        else:
+            new_x -= 1
+    elif action == 'RIGHT': 
+        if x == 16:
+            new_x = x
+        else:
+            new_x += 1
+
     else : new_x, new_y = x, y 
 
     #MY_FEATURE 1: Bias
@@ -73,9 +92,10 @@ def state_to_features(game_state: dict, action: str) -> np.ndarray:
         valid_action = 1.0
 
     #MY_FEATURE 3: Player position movement for left, right, up, down
-    hits_obstacle = 0.0
-    if field[new_x,new_y] in (-1,1):
-        hits_obstacle = 1.0
+    #hits_obstacle = 0.0
+    #if field[new_x,new_y] in (-1,1):
+    #    hits_obstacle = 1.0
+
 
     #MY_FEATURE 4: Dangerous Neighbors
     is_dangerous = 0.0
@@ -85,16 +105,20 @@ def state_to_features(game_state: dict, action: str) -> np.ndarray:
     #MY_FEATURE 5: Escape Availablity
     escape_available = 0.0
     if explosion_map[new_x,new_y] == 0 and field[new_x,new_y] == 0:
-        escape_available = 1.0
+        if action in ['UP', 'DOWN', 'LEFT', 'RIGHT'] and (new_y == y or new_x == x):
+            escape_available = 0.0
+        else:
+            escape_available = 1.0
+
 
     #MY_FEATURE 6: Destination Explosion
     destination_explosion = 0.0
-    explosion_zone = get_explosion_zone(bombs)
+    explosion_zone = get_explosion_zone(bomb_position)
     if ((new_x,new_y) in explosion_zone or explosion_map[new_x,new_y] > 0) :
         destination_explosion = 1.0
 
     # Return as 1D array phi(s, a)
-    return np.array([bias, valid_action, hits_obstacle, is_dangerous, escape_available, destination_explosion])
+    return np.array([bias, valid_action, is_dangerous, escape_available, destination_explosion])
 
 
 

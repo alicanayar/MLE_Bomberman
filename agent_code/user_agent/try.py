@@ -5,15 +5,17 @@ grid= np.array([
         [  4,  10,  8 ],
         [ -5,  4, -1 ]
     ])
-x=2
-y=1
+x=0
+y=0
 me = (x,y)
 # print(x[me[y]][me[x]])
-#print(grid[y,x])
+print(grid[x,y])
+
+for i in range(1,4):
+    print(i)
 
 
-
-
+""""
 
 def trial(prime):
      # --- FEATURE 1: Does action 'a' step closer to nearest coin? ---
@@ -65,4 +67,4 @@ def expl(bombs):
 
 asds= np.array([1,2,3,4,5,6])
 weights = np.zeros(5)
-print(weights)
+"""
