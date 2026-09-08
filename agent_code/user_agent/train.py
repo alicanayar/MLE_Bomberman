@@ -160,8 +160,11 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     # Reset episode statistics
     self.episode_reward = 0
     self.episode_length = 0
-    #self.epsilon *= 0.995 #epsilon decay rate for each episode
-    #self.epsilon = max(self.epsilon, 0.05)
+
+    #epsilon decay rate for each episode
+    self.epsilon -= 0.0003
+    self.epsilon = max(self.epsilon, 0.1)
+    self.logger.info(f"Epsilon: {self.epsilon}")
     self.logger.info(f"Updated Weights {self.weights}")
 
 

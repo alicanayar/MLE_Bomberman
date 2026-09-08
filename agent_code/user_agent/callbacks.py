@@ -15,7 +15,7 @@ def setup(self):
 
     
     #self.weights = np.zeros(NUM_FEATURES) 
-    self.epsilon = 0.1
+    self.epsilon = 0.0
 
 def get_explosion_zone(bomb_position):
     GRID_SIZE = 17
