@@ -22,7 +22,7 @@ def setup_training(self):
     self.alpha = 0.01
     self.gamma = 0.95
 
-    self.epsilon = 0.1
+    self.epsilon = 1.0
 
     self.episode_reward = 0
     self.episode_length = 0
@@ -53,7 +53,9 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     :param new_game_state: The state the agent is in now.
     :param events: The events that occurred when going from  `old_game_state` to `new_game_state`
     """
-    
+
+    """
+    #to see new actions coordinates
     old_pos = old_game_state["self"][3]
     new_pos = new_game_state["self"][3]
 
@@ -61,7 +63,7 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
         f"Step={new_game_state['step']} | "
         f"Action={self_action} | "
         f"Old={old_pos} | "
-        f"New={new_pos}"  )
+        f"New={new_pos}"  ) """ 
 
     #Calculate Reward
     reward = reward_from_events(self,events)
@@ -181,5 +183,5 @@ def reward_from_events(self, events: List[str]) -> float:
     for event in events:
         if event in game_rewards:
             reward_sum += game_rewards[event]
-    self.logger.info(f"Awarded {reward_sum} for events {', '.join(events)}")
+    #self.logger.info(f"Awarded {reward_sum} for events {', '.join(events)}")
     return reward_sum

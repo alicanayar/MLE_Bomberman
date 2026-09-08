@@ -11,8 +11,12 @@ me = (x,y)
 # print(x[me[y]][me[x]])
 print(grid[x,y])
 
-for i in range(1,4):
-    print(i)
+qw = [1,2,3,4]
+y = (3,5)
+z = [(3,4),(2,3),(1,2)]
+x =5
+if x == 5 and y not in z:
+    print("yes")
 
 
 """"
