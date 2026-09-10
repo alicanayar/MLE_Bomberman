@@ -1,8 +1,11 @@
 import numpy as np
 import random
 import pickle
+from collections import deque
+
+
 ACTIONS = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'BOMB', 'WAIT']
-NUM_FEATURES = 8
+NUM_FEATURES = 11
 
 
 def setup(self):
@@ -13,9 +16,13 @@ def setup(self):
     except FileNotFoundError:
         self.weights = np.zeros(NUM_FEATURES)
 
+    self.epsilon = 0.1
+
+#write positions after each action (l,r,u,p)
+#def position_after_action(action):
     
-    #self.weights = np.zeros(NUM_FEATURES) 
-    self.epsilon = 0.0
+
+
 
 def get_explosion_zone(bomb_position):
     GRID_SIZE = 17
@@ -32,9 +39,99 @@ def get_explosion_zone(bomb_position):
                 # Boundary check: ensure coordinates remain inside [0, 16]
                 if 0 <= nx < GRID_SIZE and 0 <= ny < GRID_SIZE:
                     explosion_tiles.add((nx, ny))
-
+                    
     return list(explosion_tiles) 
 
+      
+
+
+def BFS(agent_position, coins, field):
+    GRID_SIZE = 17
+
+    directions = [
+        (0, -1),   # UP
+        (0, 1),    # DOWN
+        (-1, 0),   # LEFT
+        (1, 0)     # RIGHT
+    ]
+
+    closest_distance = float('inf')
+    closest_path = []
+    closest_coin_coord = None
+
+    for coin in coins:
+
+        # Queue contains positions to explore
+        queue = deque([agent_position])
+
+        # parent_map[position] = previous position
+        parent_map = {
+            agent_position: None
+        }
+
+        found = False
+
+        while queue:
+
+            current = queue.popleft()
+            curr_x, curr_y = current
+
+            # We reached this coin
+            if current == coin:
+                found = True
+                break
+
+            # Explore neighbors
+            for dx, dy in directions:
+
+                nx = curr_x + dx
+                ny = curr_y + dy
+
+                # Check boundaries
+                if not (0 <= nx < GRID_SIZE and
+                        0 <= ny < GRID_SIZE):
+                    continue
+
+                # Check whether tile is walkable
+                if field[ny][nx] != 0:
+                    continue
+
+                next_position = (nx, ny)
+
+                # Already visited
+                if next_position in parent_map:
+                    continue
+
+                parent_map[next_position] = current
+                queue.append(next_position)
+
+        # Coin was unreachable
+        if not found:
+            continue
+
+        # Reconstruct path
+        path = []
+        current = coin
+
+        while current is not None:
+            path.append(current)
+            current = parent_map[current]
+
+        # Currently: coin -> ... -> agent
+        path.reverse()
+
+        # Number of movements
+        distance = len(path) - 1
+
+        # Check if this is the closest coin
+        if distance < closest_distance:
+            closest_distance = distance
+            closest_path = path
+            closest_coin_coord = coin
+
+    return closest_distance, closest_path, closest_coin_coord
+
+#Output : distance = 4 path = [(5, 5), (4, 5),(3, 5),(3, 6), (3, 7)]
 
 
 def state_to_features(game_state: dict, action: str) -> np.ndarray:
@@ -83,61 +180,44 @@ def state_to_features(game_state: dict, action: str) -> np.ndarray:
 
     else : new_x, new_y = x, y 
 
+
+
+
+    explosion_zones = get_explosion_zone(bomb_position)
+
     #MY_FEATURE 1: Bias
     bias = 1.0
+
     #MY_FEATURE 2: Valid Action
     valid_action = 0.0
     if action in ['UP', 'DOWN', 'LEFT', 'RIGHT']:
         if field[new_x,new_y] == 0:
             valid_action = 1.0
-    elif action == 'BOMB':
-        if bomb_available:
-            valid_action = 1.0
-    else: #wait action
-        valid_action = 1.0
 
-    #MY_FEATURE 3: Player position movement for left, right, up, down
-    #hits_obstacle = 0.0
-    #if field[new_x,new_y] in (-1,1):
-    #    hits_obstacle = 1.0
+    #try delete from here
+    #elif action == 'BOMB':
+    #    if bomb_available:
+    #        valid_action = 1.0
+    #else: #wait action
+    #    valid_action = 1.0
 
-
-    #MY_FEATURE 4: Dangerous Neighbors
+    #MY_FEATURE 4: Current Dangerous check for exploded areas
     is_dangerous = 0.0
-    if explosion_map[new_x,new_y] != 0:
+    if (x,y) in bomb_position or (x,y) in explosion_zones:
         is_dangerous = 1.0
 
-    #MY_FEATURE 5: Escape Availablity
+    #MY_FEATURE 5: Escape Availablity of next step
+    
+
     escape_availability = 0.0
-    """if explosion_map[new_x,new_y] == 0 and field[new_x,new_y] == 0:
-        if action in ['UP', 'DOWN', 'LEFT', 'RIGHT'] and (new_y == y or new_x == x):
-            escape_available = 0.0
-        else:
-            escape_available = 1.0"""
-
-    explosion_zones = get_explosion_zone(bomb_position)
-
-    if field[new_x, new_y] == 0:
-
-
-        safe_neighbors = 0
-
-        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-
-            nx = new_x + dx
-            ny = new_y + dy
-
-            if 0 <= nx < field.shape[0] and 0 <= ny < field.shape[1]:
-
-                #if field[nx, ny] == 0 and explosion_map[nx, ny] == 0:
-                if field[nx,ny] == 0 and (nx,ny) not in explosion_zones:
-
-                    safe_neighbors += 1
-
-        escape_availability = safe_neighbors / 4.0
+    for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+        nx = new_x + dx
+        ny = new_y + dy
+        if 0 <= nx < field.shape[0] and 0 <= ny < field.shape[1]:
+            if field[nx,ny] == 0 and explosion_map[nx,ny] == 0 and (nx,ny) not in explosion_zones and( (nx, ny) not in bomb_position):
+                escape_availability += 1
+    escape_availability = escape_availability / 4.0
         
-
-
     #MY_FEATURE 6: Destination Explosion
     """destination_explosion = 0.0
     explosion_zone = get_explosion_zone(bomb_position)
@@ -148,26 +228,75 @@ def state_to_features(game_state: dict, action: str) -> np.ndarray:
     #Returns a 4-element list [UP, DOWN, LEFT, RIGHT].
     #Value is 1 if moving in that direction is gonna explode, else 0.
     destination_explosion = [0,0,0,0]
+    i = 0
+    for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+
+        destination_x = x + dx
+        destination_y = y + dy
+
+        if 0 <= destination_x < field.shape[0] and 0 <= destination_y < field.shape[1]:
+
+            if ((destination_x, destination_y) in explosion_zones) or (explosion_map[destination_x,destination_y] != 0) or ((destination_x,destination_y) in bomb_position):
+                destination_explosion[i] = 1.0
+
+        i += 1
+
+
+    #FEATURE: shortest walkable path from player to nearest coin via BFS
+    #Find the nearest reachable coin from the current state.
+    #Determine the shortest path.
+    #Check whether action a is the first step of that path.
+
+    #Nearest coin
+    #FEATURE: First step toward nearest coin
+    _, path,closest_coin_coord = BFS((x,y),coins,field)
+
+    coin_path = 0.0
+
+    if len(path) > 1 and (new_x, new_y) == path[1]:
+        coin_path = 1.0
+
+    #FEATURE: Immediate Coin pickup
+    coin_pickup = 0.0
+    if (new_x,new_y) in coins:
+        coin_pickup = 1.0
+
+    #FEATURE: Distance to nearest coin after action
+    coin_distance = 0.0
+    #j = 0
+    #for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+    #    if closest_coin_coord is None:
+    #        pass
+    #    else:
+    #        destination_x = x + dx
+    #        destination_y = y + dy
+#
+    #        if 0 <= destination_x < field.shape[0] and 0 <= destination_y < field.shape[1]:
+    #            distance = BFS((destination_x,destination_y),[closest_coin_coord],field)[0]
+    #            if distance  == float("inf"):
+    #                coin_distance[j] = 1.0
+    #            else:
+    #                coin_distance[j] = distance / 16
+    #        j += 1
+
+    #FEATURE above alternative
+    if closest_coin_coord is None:
+        coin_distance = 1.0
+    else:
+
+        distance = BFS(
+        (new_x, new_y),
+        [closest_coin_coord],
+        field
+    )[0]
+
+        if distance == float('inf'):
+            coin_distance = 1.0
+        else:
+            coin_distance = distance / 16
     
-    if bombs:
-        destination_explosion = []
-        for action in ['UP', 'DOWN', 'LEFT', 'RIGHT']:
-            closer_to_bomb = 0
-
-            if (new_x,new_y) in explosion_zones:
-                closer_to_bomb = 1
-
-            destination_explosion.append(closer_to_bomb)
-
-       
-
-        
-
-    
-
-
     # Return as 1D array phi(s, a)
-    return np.array([bias, valid_action, is_dangerous, escape_availability, *destination_explosion])
+    return np.array([bias,is_dangerous, valid_action, escape_availability, *destination_explosion, coin_path,coin_pickup,coin_distance])
 
 
 

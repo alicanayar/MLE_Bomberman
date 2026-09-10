@@ -4,11 +4,8 @@ import numpy as np
 import events as e
 from .callbacks import state_to_features
 
-
-
-
 ACTIONS = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'BOMB', 'WAIT']
-
+#SURVIVED_STEP = "SURVIVED_STEP"
 
 
 def setup_training(self):
@@ -30,8 +27,6 @@ def setup_training(self):
     self.training_rewards = []
     self.training_lengths = []
     self.training_deaths = []
-
-
 
 
 
@@ -65,6 +60,13 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
         f"Old={old_pos} | "
         f"New={new_pos}"  ) """ 
 
+    #Custom event
+    #events = list(events)
+
+    #if e.KILLED_SELF not in events and e.GOT_KILLED not in events:
+    #    events.append(SURVIVED_STEP)
+
+
     #Calculate Reward
     reward = reward_from_events(self,events)
 
@@ -78,8 +80,7 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     current_q = np.dot(self.weights, phi)
 
     #Calculate next state's Q(s,a)
-    next_q = max(
-        np.dot(self.weights, state_to_features(new_game_state, action)) for action in ACTIONS)
+    next_q = max(np.dot(self.weights, state_to_features(new_game_state, action)) for action in ACTIONS)
 
     #Calculate target
     target = reward + self.gamma * next_q
@@ -164,19 +165,28 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     #epsilon decay rate for each episode
     self.epsilon -= 0.0003
     self.epsilon = max(self.epsilon, 0.1)
-    self.logger.info(f"Epsilon: {self.epsilon}")
-    self.logger.info(f"Updated Weights {self.weights}")
+
+
+    q_contributions = self.weights * phi
+    self.logger.info(
+    f"Features={phi}, "
+    f"Weights={self.weights}, "
+    f"Contributions={q_contributions}, "
+    f"Q={last_q}"
+)
+    #self.logger.info(f"Updated Weights {self.weights}")
 
 
 def reward_from_events(self, events: List[str]) -> float:
     """
-    *This is not a required function, but an idea to structure your code.*
-
+    
     Here you can modify the rewards your agent get so as to en/discourage
     certain behavior.
     """
     game_rewards = {
+        #SURVIVED_STEP: +0.01 ,
         e.SURVIVED_ROUND: 0.1,
+        e.COIN_COLLECTED: 5.0,
         e.WAITED: 0,
         e.INVALID_ACTION: -0.5,
         e.KILLED_SELF: -2.0,
