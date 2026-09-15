@@ -2,11 +2,14 @@ import pickle
 from typing import List
 import numpy as np
 import events as e
-from .callbacks import state_to_features
+from .callbacks import state_to_features, danger_level
 
 ACTIONS = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'BOMB', 'WAIT']
 #SURVIVED_STEP = "SURVIVED_STEP"
-
+MOVED_INTO_DANGER = "MOVED_INTO_DANGER"
+ESCAPED_DANGER = "ESCAPED_DANGER"
+STAYED_IN_DANGER = "STAYED_IN_DANGER"
+TRAPPED_BY_OWN_BOMB = "TRAPPED_BY_OWN_BOMB"
 
 def setup_training(self):
     """
@@ -49,23 +52,29 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     :param events: The events that occurred when going from  `old_game_state` to `new_game_state`
     """
 
-    """
+    
     #to see new actions coordinates
-    old_pos = old_game_state["self"][3]
-    new_pos = new_game_state["self"][3]
-
-    self.logger.info(
-        f"Step={new_game_state['step']} | "
-        f"Action={self_action} | "
-        f"Old={old_pos} | "
-        f"New={new_pos}"  ) """ 
-
+    #old_pos = old_game_state["self"][3]
+    #new_pos = new_game_state["self"][3]
+#
+    #self.logger.info(
+    #    f"Step={new_game_state['step']} | "
+    #    f"Action={self_action} | "
+    #    f"Old={old_pos} | "
+    #    f"New={new_pos}"  ) 
+    #self.logger.info(f"field:{old_game_state["field"]},field[3,1]:{old_game_state["field"][3,1]}")
+    #self.logger.info(f"bombs{new_game_state["bombs"]}")
+    
     #Custom event
     #events = list(events)
 
     #if e.KILLED_SELF not in events and e.GOT_KILLED not in events:
     #    events.append(SURVIVED_STEP)
-
+    
+    
+    #for action in ACTIONS:
+    #    phi = state_to_features(old_game_state, self_action)
+    #    print(action, phi)
 
     #Calculate Reward
     reward = reward_from_events(self,events)
@@ -186,7 +195,8 @@ def reward_from_events(self, events: List[str]) -> float:
     game_rewards = {
         #SURVIVED_STEP: +0.01 ,
         e.SURVIVED_ROUND: 0.1,
-        e.COIN_COLLECTED: 5.0,
+        e.COIN_COLLECTED: 2.0,
+        e.CRATE_DESTROYED: 2.0,
         e.WAITED: 0,
         e.INVALID_ACTION: -0.5,
         e.KILLED_SELF: -2.0,
