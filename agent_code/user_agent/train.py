@@ -103,7 +103,7 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     error = target - current_q
 
     #custom env 
-    if self_action == "BOMB":  #crate_bombing
+    if self_action == "BOMB":  #crate_bombing feature
         if phi[-3] == 1:
             events.append(BOMB_NEXT_TO_CRATE)
         else:
@@ -118,6 +118,8 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
         events.append(REACH_SAFE_TILE)
 
 
+    self.logger.info(f"{self_action}: Q:{current_q:.3f},c_b:{phi[-3]}")
+    
     #Update weights
     self.weights += (self.alpha * error * phi)
 
@@ -197,13 +199,13 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     self.epsilon = max(self.epsilon, 0.1)
 
 
-    q_contributions = self.weights * phi
-    self.logger.info(
-    f"Features={phi}, "
-    f"Weights={self.weights}, "
-    f"Contributions={q_contributions}, "
-    f"Q={last_q}"
-)
+    #q_contributions = self.weights * phi
+    #self.logger.info(
+    #f"Features={phi}, "
+    #f"Weights={self.weights}, "
+    #f"Contributions={q_contributions}, "
+    #f"Q={last_q}"
+#)
     #self.logger.info(f"Updated Weights {self.weights}")
 
 
@@ -215,17 +217,17 @@ def reward_from_events(self, events: List[str]) -> float:
     """
     game_rewards = {
         #SURVIVED_STEP: +0.01 ,
-        e.SURVIVED_ROUND: 0.01, #NORMALLY SETTED 0.1
+        e.SURVIVED_ROUND: 0.1, #NORMALLY SETTED 0.1
         e.COIN_COLLECTED: 2.0,
         e.CRATE_DESTROYED: 2.0,
         e.WAITED: 0,
         e.INVALID_ACTION: -0.5,
         e.KILLED_SELF: -2.0,
         e.GOT_KILLED: -2.0,
-        BOMB_NEXT_TO_CRATE: 0.2,
-        BOMB_NOT_NEXT_TO_CRATE: -0.5,
-        CORRECT_ESCAPE_ACTION: 0.1,
-        REACH_SAFE_TILE: 0.2
+        BOMB_NEXT_TO_CRATE: 3.0,
+        BOMB_NOT_NEXT_TO_CRATE: -1.0, #-0.5 kinda works
+        #CORRECT_ESCAPE_ACTION: 0.1,
+        #REACH_SAFE_TILE: 0.2
     }
     reward_sum = 0
     for event in events:

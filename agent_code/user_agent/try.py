@@ -2,7 +2,7 @@ import numpy as np
 field = np.zeros((17,17))
 b = np.ones((17,17))
 bombs = [((9,9),0),((3,4),3)]
-
+new_bomb = ((3,1),4)
 def danger_level(bombs,field):
     GRID_SIZE = 17
     danger_map = np.zeros(field.shape)
@@ -32,10 +32,6 @@ def danger_level(bombs,field):
     return danger_map
 
 
-asd = True
-sds = False
-
-if not sds:
-    print("aaaa")
-
+x,y,z = 0, 0,0
+print(x,y,z)
 

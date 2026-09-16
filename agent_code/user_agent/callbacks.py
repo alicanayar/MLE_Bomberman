@@ -5,7 +5,7 @@ from collections import deque
 
 
 ACTIONS = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'BOMB', 'WAIT']
-NUM_FEATURES = 12
+NUM_FEATURES = 13
 
 
 def setup(self):
@@ -21,7 +21,48 @@ def setup(self):
 #write positions after each action (l,r,u,p)
 #def position_after_action(action):
     
+def bomb_will_hit_crate(position, field, bomb_range=3):
+    """
+    Returns True if a bomb at `position` would hit at least one crate.
 
+    position: (x, y)
+    field: Bomberman field
+           0 = free
+           1 = crate
+          -1 = wall
+    """
+
+    x, y = position
+
+    # Check the four explosion directions
+    directions = [
+        (0, -1),   # UP
+        (0, 1),    # DOWN
+        (-1, 0),   # LEFT
+        (1, 0)     # RIGHT
+    ]
+
+    for dx, dy in directions:
+
+        for i in range(1, bomb_range + 1):
+
+            nx = x + dx * i
+            ny = y + dy * i
+
+            # Outside the field
+            if not (0 <= nx < field.shape[0] and
+                    0 <= ny < field.shape[1]):
+                break
+
+            # Wall blocks the explosion
+            if field[nx, ny] == -1:
+                break
+
+            # Crate is hit
+            if field[nx, ny] == 1:
+                return True
+
+    return False
 def get_crates_indices(field):
     """
     Finds all coordinates in a 2D numpy array where the value is -1.
@@ -403,6 +444,8 @@ def state_to_features(game_state: dict, action: str) -> np.ndarray:
     eval_x = new_x if valid_action else x
     eval_y = new_y if valid_action else y
 
+
+
     dangerous_map = danger_level(bombs,field)
 
     #THESE TWO FEATURES ARE OPTIONAL: PLAY AROUND IT
@@ -426,8 +469,7 @@ def state_to_features(game_state: dict, action: str) -> np.ndarray:
     escape_availability = escape_availability / 4.0
 
     #!!!! long coridor bombs are still problem.
-
-    """        
+     
     _, path,closest_coin_coord = BFS((x,y),coins,field)
 
     coin_path = 0.0
@@ -456,7 +498,7 @@ def state_to_features(game_state: dict, action: str) -> np.ndarray:
         if distance == float('inf'):
             coin_distance = 1.0
         else:
-            coin_distance = distance / 16"""
+            coin_distance = distance / 16
   
 
     #TRy to give reward for surviving from your own bomb with custom event
@@ -470,6 +512,7 @@ def state_to_features(game_state: dict, action: str) -> np.ndarray:
     #FEATURE: being next to crate
     
     #gives a path closest coordinates next to the crate
+    #if closest_coin_coord != float('inf'):
     distance, path, crate_coord = BFS_crate((x,y),field) 
     #(2, [(1, 1), (1, 2), (1, 3)], (1, 4))
     
@@ -496,9 +539,16 @@ def state_to_features(game_state: dict, action: str) -> np.ndarray:
     #bomb_available = temporal information
 
     
+    #crate_bombing = 0.0
+    #if bomb_available and next_to_crate == 1.0 and action == "BOMB":
+    #    crate_bombing = 1.0
+    
+
     crate_bombing = 0.0
-    if bomb_available and next_to_crate == 1.0 and action == "BOMB":
-        crate_bombing = 1.0
+
+    if bomb_available and action == "BOMB":
+        if bomb_will_hit_crate((x, y), field):
+            crate_bombing = 1.0
 
 
 
@@ -518,37 +568,27 @@ def state_to_features(game_state: dict, action: str) -> np.ndarray:
     bomb_escape = 0.0
     safe_after_bomb = 0.0
 
-    if not bomb_available:
+    #if not bomb_available:
 
-        if all_bomb_areas[x,y] > 0:
-            # We are currently threatened
-            if len(s_path) > 1:
-                if (eval_x, eval_y) == s_path[1]:
-                    bomb_escape = 1.0
+    if all_bomb_areas[x,y] > 0:
+        # We are currently threatened
+        if len(s_path) > 1:
+            if (eval_x, eval_y) == s_path[1]:
+                bomb_escape = 1.0
+    else:
+        # Already outside the danger zone
+        safe_after_bomb = 1.0
 
-        else:
-            # Already outside the danger zone
-            safe_after_bomb = 1.0
-
-
-        #if closest_safe_coord is None:
-        #    safe_distance = 1.0
-        #else:
-#
-        #    distance = BFS_safe((eval_x, eval_y),field,all_bomb_areas)[0]
-#
-        #    if distance == float('inf'):
-        #        safe_distance = 1.0
-        #    else:
-        #        safe_distance = distance / 16
-
-
-   
+        
     
     # Return as 1D array phi(s, a)
-    return np.array([bias,valid_action,destination_danger, destination_explosion, is_deadly, escape_availability,
-                     #coin_path,coin_pickup,coin_distance, 
-                     crate_path, crate_distance,next_to_crate,crate_bombing,bomb_escape,safe_after_bomb])
+    return np.array([bias,valid_action,
+                     destination_danger, destination_explosion,
+                       #is_deadly, escape_availability,
+                      coin_path,coin_pickup,coin_distance, 
+                     crate_path, crate_distance,next_to_crate,crate_bombing
+                     ,bomb_escape,safe_after_bomb
+                     ])
     
     #return np.array([bias,is_dangerous, valid_action, escape_availability, *destination_explosion, coin_path,coin_pickup,coin_distance,next_to_crate,crate_path,bomb_escape])
 
@@ -574,3 +614,10 @@ def act(self, game_state: dict) -> str:
 
     
     return action
+
+
+#TO DO LIST
+#bomb append righ after drop (for every agent and self)
+#Long coridor bombing escape feature
+#more incentivized crate bombing rather than bombing for nothing
+#make conditional coin collection rather than crate searching
