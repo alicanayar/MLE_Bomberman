@@ -10,6 +10,11 @@ MOVED_INTO_DANGER = "MOVED_INTO_DANGER"
 ESCAPED_DANGER = "ESCAPED_DANGER"
 STAYED_IN_DANGER = "STAYED_IN_DANGER"
 TRAPPED_BY_OWN_BOMB = "TRAPPED_BY_OWN_BOMB"
+BOMB_NEXT_TO_CRATE = "BOMB_NEXT_TO_CRATE"
+CORRECT_ESCAPE_ACTION = "CORRECT_ESCAPE_ACTION"
+REACH_SAFE_TILE = "REACH_SAFE_TILE"
+BOMB_NOT_NEXT_TO_CRATE = "BOMB_NOT_NEXT_TO_CRATE"
+
 
 def setup_training(self):
     """
@@ -96,6 +101,22 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
 
     #Error
     error = target - current_q
+
+    #custom env 
+    if self_action == "BOMB":  #crate_bombing
+        if phi[-3] == 1:
+            events.append(BOMB_NEXT_TO_CRATE)
+        else:
+            events.append(BOMB_NOT_NEXT_TO_CRATE)
+
+        
+
+    if phi[-2] == 1: #bomb_escape
+        events.append(CORRECT_ESCAPE_ACTION)
+
+    if phi[-1] == 1: #safe_after_bomb
+        events.append(REACH_SAFE_TILE)
+
 
     #Update weights
     self.weights += (self.alpha * error * phi)
@@ -194,13 +215,17 @@ def reward_from_events(self, events: List[str]) -> float:
     """
     game_rewards = {
         #SURVIVED_STEP: +0.01 ,
-        e.SURVIVED_ROUND: 0.1,
+        e.SURVIVED_ROUND: 0.01, #NORMALLY SETTED 0.1
         e.COIN_COLLECTED: 2.0,
         e.CRATE_DESTROYED: 2.0,
         e.WAITED: 0,
         e.INVALID_ACTION: -0.5,
         e.KILLED_SELF: -2.0,
-        e.GOT_KILLED: -2.0
+        e.GOT_KILLED: -2.0,
+        BOMB_NEXT_TO_CRATE: 0.2,
+        BOMB_NOT_NEXT_TO_CRATE: -0.5,
+        CORRECT_ESCAPE_ACTION: 0.1,
+        REACH_SAFE_TILE: 0.2
     }
     reward_sum = 0
     for event in events:

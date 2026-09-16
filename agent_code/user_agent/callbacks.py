@@ -5,7 +5,7 @@ from collections import deque
 
 
 ACTIONS = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'BOMB', 'WAIT']
-NUM_FEATURES = 16
+NUM_FEATURES = 12
 
 
 def setup(self):
@@ -16,7 +16,7 @@ def setup(self):
     except FileNotFoundError:
         self.weights = np.zeros(NUM_FEATURES)
 
-    self.epsilon = 0.1
+    self.epsilon = 0.0
 
 #write positions after each action (l,r,u,p)
 #def position_after_action(action):
@@ -238,7 +238,109 @@ def BFS_crate(agent_position, field):
 
     return float('inf'), [], None
 
-# Output
+def BFS_safe(agent_position, field, danger_map):
+
+    GRID_SIZE = 17
+
+    directions = [
+        (0, -1),   # UP
+        (0, 1),    # DOWN
+        (-1, 0),   # LEFT
+        (1, 0)     # RIGHT
+    ]
+
+    queue = deque()
+
+    # State = (position, time)
+    queue.append((agent_position, 0))
+
+    # We store the previous state for path reconstruction
+    parent_map = {
+        (agent_position, 0): None
+    }
+
+    while queue:
+
+        current, time = queue.popleft()
+
+        x, y = current
+
+        # ------------------------------------------------
+        # Check whether current tile is safe at this time
+        # ------------------------------------------------
+
+        danger_value = danger_map[x,y]
+
+        if danger_value == 0:
+            # We found a safe destination
+            path = []
+
+            state = (current, time)
+
+            while state is not None:
+                position, _ = state
+                path.append(position)
+                state = parent_map[state]
+
+            path.reverse()
+
+            return len(path) - 1, path, current
+
+        # ------------------------------------------------
+        # Explore neighboring tiles
+        # ------------------------------------------------
+
+        for dx, dy in directions:
+
+            nx = x + dx
+            ny = y + dy
+
+            # Boundary check
+            if not (0 <= nx < GRID_SIZE and
+                    0 <= ny < GRID_SIZE):
+                continue
+
+            # Tile must be walkable
+            if field[nx,ny] != 0:
+                continue
+
+            next_time = time + 1
+
+            # ------------------------------------------------
+            # Convert danger value into explosion timing
+            #
+            # 0.25 -> 3 steps
+            # 0.50 -> 2 steps
+            # 0.75 -> 1 step
+            # 1.00 -> 0 steps
+            # ------------------------------------------------
+
+            danger_value = danger_map[nx][ny]
+
+            if danger_value > 0:
+
+                explosion_time = round(
+                    4 - danger_value * 4
+                )
+
+                # If the tile explodes before or exactly
+                # when we arrive, we cannot use it.
+                if explosion_time <= next_time:
+                    continue
+
+            next_state = ((nx, ny), next_time)
+
+            # Avoid visiting the same position at the same time
+            if next_state in parent_map:
+                continue
+
+            parent_map[next_state] = (current, time)
+
+            queue.append(next_state)
+
+    # No safe tile found
+    return float('inf'), [], None
+#Output
 #(2, [(1, 1), (1, 2), (1, 3)], (1, 4))
 
 def state_to_features(game_state: dict, action: str) -> np.ndarray:
@@ -304,8 +406,8 @@ def state_to_features(game_state: dict, action: str) -> np.ndarray:
     dangerous_map = danger_level(bombs,field)
 
     #THESE TWO FEATURES ARE OPTIONAL: PLAY AROUND IT
-    current_danger = dangerous_map[x,y]
-    current_explosion = int(explosion_map[x,y] > 0)
+    #current_danger = dangerous_map[x,y]
+    #current_explosion = int(explosion_map[x,y] > 0)
 
     #FEATURE: Future danger of destination (how imminent the bomb threat is.)
     destination_danger = dangerous_map[eval_x,eval_y]    
@@ -322,7 +424,10 @@ def state_to_features(game_state: dict, action: str) -> np.ndarray:
             if field[nx,ny] == 0 and explosion_map[nx,ny] == 0 and  dangerous_map[nx,ny] == 0 :
                 escape_availability += 1
     escape_availability = escape_availability / 4.0
-            
+
+    #!!!! long coridor bombs are still problem.
+
+    """        
     _, path,closest_coin_coord = BFS((x,y),coins,field)
 
     coin_path = 0.0
@@ -351,7 +456,7 @@ def state_to_features(game_state: dict, action: str) -> np.ndarray:
         if distance == float('inf'):
             coin_distance = 1.0
         else:
-            coin_distance = distance / 16
+            coin_distance = distance / 16"""
   
 
     #TRy to give reward for surviving from your own bomb with custom event
@@ -364,7 +469,7 @@ def state_to_features(game_state: dict, action: str) -> np.ndarray:
     
     #FEATURE: being next to crate
     
-    #crate_indicies = get_crates_indices(field)
+    #gives a path closest coordinates next to the crate
     distance, path, crate_coord = BFS_crate((x,y),field) 
     #(2, [(1, 1), (1, 2), (1, 3)], (1, 4))
     
@@ -396,74 +501,54 @@ def state_to_features(game_state: dict, action: str) -> np.ndarray:
         crate_bombing = 1.0
 
 
+
+
+
     #safe_bomb = 0.0
     #if crate_bombing == 1.0 and escape_availability > 0:
     #    safe_bomb = 1.0
 
     #Safe go
     #Problem:the step that bomb dropped doesn't count
-    safe_path = 0.0
-    safe_pickup = 0.0
-    safe_distance = 0.0
 
-   
+
+    all_bomb_areas = np.maximum(dangerous_map, explosion_map)
+    s_distance, s_path,closest_safe_coord = BFS_safe((x,y),field,all_bomb_areas)
+    
+    bomb_escape = 0.0
+    safe_after_bomb = 0.0
+
     if not bomb_available:
 
-        simulated_bombs = list(bombs) + [((x, y), 4)]
+        if all_bomb_areas[x,y] > 0:
+            # We are currently threatened
+            if len(s_path) > 1:
+                if (eval_x, eval_y) == s_path[1]:
+                    bomb_escape = 1.0
 
-        sim_danger = danger_level(simulated_bombs, field)
-
-        all_bomb_areas = np.maximum(sim_danger, explosion_map)
-
-        safe_indices = get_safe_indicies(all_bomb_areas)
-
-        s_distance, s_path,closest_safe_coord = BFS((x,y),safe_indices,field)
-
-        
-
-        if len(s_path) > 1 and (eval_x, eval_y) == s_path[1]:
-            safe_path = 1.0
-
-        
-        if (eval_x,eval_y) in safe_indices:
-            safe_pickup = 1.0
-
-        
-
-        if closest_safe_coord is None:
-            safe_distance = 1.0
         else:
-
-            distance = BFS(
-            (eval_x, eval_y),
-            [closest_safe_coord],
-            field
-        )[0]
-
-            if distance == float('inf'):
-                safe_distance = 1.0
-            else:
-                safe_distance = distance / 16
+            # Already outside the danger zone
+            safe_after_bomb = 1.0
 
 
+        #if closest_safe_coord is None:
+        #    safe_distance = 1.0
+        #else:
+#
+        #    distance = BFS_safe((eval_x, eval_y),field,all_bomb_areas)[0]
+#
+        #    if distance == float('inf'):
+        #        safe_distance = 1.0
+        #    else:
+        #        safe_distance = distance / 16
 
 
-
-
-
-    #FEATURE: Escape from your own bomb
-
-    #FEATURE: Predict if your bomb destroy any crate
-    # bomb_position = (new_x, new_y)
-    #crate will be destroyed
-    
-
-
+   
     
     # Return as 1D array phi(s, a)
     return np.array([bias,valid_action,destination_danger, destination_explosion, is_deadly, escape_availability,
-                     coin_path,coin_pickup,coin_distance, 
-                     crate_path, crate_distance,next_to_crate,crate_bombing,safe_path,safe_pickup,safe_distance])
+                     #coin_path,coin_pickup,coin_distance, 
+                     crate_path, crate_distance,next_to_crate,crate_bombing,bomb_escape,safe_after_bomb])
     
     #return np.array([bias,is_dangerous, valid_action, escape_availability, *destination_explosion, coin_path,coin_pickup,coin_distance,next_to_crate,crate_path,bomb_escape])
 
