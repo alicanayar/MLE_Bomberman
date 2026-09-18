@@ -123,8 +123,8 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     self.episode_length = 0
 
     #epsilon decay rate for each episode
-    self.epsilon -= 0.0003
-    self.epsilon = max(self.epsilon, 0.1)
+    self.epsilon -= 0.0001
+    self.epsilon = max(self.epsilon, 0.8)
 
 
 
@@ -136,13 +136,13 @@ def reward_from_events(self, events: List[str]) -> float:
     """
     game_rewards = {
         e.SURVIVED_ROUND: 0.1,
-        e.COIN_COLLECTED: 2.0,
-        e.CRATE_DESTROYED: 2.0,
+        e.COIN_COLLECTED: 30.0,
+        e.CRATE_DESTROYED: 0.1,
         e.WAITED: 0,
         e.INVALID_ACTION: -0.5,
         e.KILLED_SELF: -2.0,
         e.GOT_KILLED: -2.0,
-        BOMB_NEXT_TO_CRATE: 3.0,
+        BOMB_NEXT_TO_CRATE: 0.1,
         BOMB_NOT_NEXT_TO_CRATE: -1.0, 
 
     }
