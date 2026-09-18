@@ -333,7 +333,7 @@ def BFS_safe(agent_position, field, danger_map):
 
                 # If the tile explodes before or exactly
                 # when we arrive, we cannot use it.
-                if explosion_time <= next_time:
+                if explosion_time < next_time:
                     continue
 
             next_state = ((nx, ny), next_time)
