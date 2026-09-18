@@ -1,0 +1,16 @@
+matplotlib==3.5.3
+matplotlib==3.5.2
+matplotlib==3.6.1
+matplotlib==3.5.1
+numpy==1.19.3
+numpy==1.15.1
+numpy==1.19.5
+numpy==1.23.1
+numpy==1.21.5
+numpy==1.23.3
+pygame==2.1.0
+pygame==2.6.0
+tqdm==4.67.0
+tqdm==4.70.0
+tqdm==4.65.0
+tqdm==4.64.0
