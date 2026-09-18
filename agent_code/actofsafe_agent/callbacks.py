@@ -18,7 +18,7 @@ def setup(self):
 
     self.epsilon = 0.0
 
-    
+
 def bomb_will_hit_crate(position, field, bomb_range=3):
     """
     Returns True if a bomb at `position` would hit at least one crate.
@@ -425,11 +425,23 @@ def state_to_features(game_state: dict, action: str) -> np.ndarray:
      
 
     #Coin Features 
-    _, path,closest_coin_coord = BFS((x,y),coins,field)
+    self_distance, path,closest_coin_coord = BFS((x,y),coins,field)
+
+
+    #Closest enemy's distance to closest coin
+    faraway = 0
+    if closest_coin_coord != None and  enemy_position != []:
+        for enemy in enemy_position:
+            enemy_coin_distance = BFS(tuple(enemy),[tuple(closest_coin_coord)],field)[0]
+    
+            if enemy_coin_distance <= self_distance:
+                faraway = 1
+                break
+
 
     coin_path = 0.0
 
-    if len(path) > 1 and (eval_x, eval_y) == path[1]:
+    if len(path) > 1 and (eval_x, eval_y) == path[1] and faraway == 0:
         coin_path = 1.0
 
     #FEATURE: Immediate Coin pickup
@@ -450,7 +462,7 @@ def state_to_features(game_state: dict, action: str) -> np.ndarray:
         field
     )[0]
 
-        if distance == float('inf'):
+        if distance == float('inf') or faraway == 1 :
             coin_distance = 1.0
         else:
             coin_distance = distance / 16
