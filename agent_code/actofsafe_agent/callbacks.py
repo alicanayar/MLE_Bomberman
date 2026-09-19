@@ -22,12 +22,6 @@ def setup(self):
 def bomb_will_hit_crate(position, field, bomb_range=3):
     """
     Returns True if a bomb at `position` would hit at least one crate.
-
-    position: (x, y)
-    field: Bomberman field
-           0 = free
-           1 = crate
-          -1 = wall
     """
 
     x, y = position
@@ -65,7 +59,7 @@ def bomb_will_hit_crate(position, field, bomb_range=3):
 
 
 
-#high number means high danger on the map. Danger levels depends on the bomb timer. High number means bomb gonna explode
+#high number means high danger on the map. Danger levels depends on the bomb timer. High number means bomb is gonna explode
 # 3 sec = 0.25, 2 sec = 0.50, 1 sec = 0.75, 0 sec = 1.0 (bomb explodes next step)
 def danger_level(bombs,field):
     GRID_SIZE = 17
@@ -80,7 +74,7 @@ def danger_level(bombs,field):
                 ny = by + dy * i
 
                 # Outside the map
-                if not (0 <= nx < GRID_SIZE and 0 <= ny < GRID_SIZE):
+                if not (0 <= nx < field.shape[0] and 0 <= ny < field.shape[1]):
                     break
 
                 # Wall -> stop this explosion arm
@@ -134,8 +128,8 @@ def BFS(agent_position, coins, field):
                 ny = curr_y + dy
 
                 # Check boundaries
-                if not (0 <= nx < GRID_SIZE and
-                        0 <= ny < GRID_SIZE):
+                if not (0 <= nx < field.shape[0] and
+                        0 <= ny < field.shape[1]):
                     continue
 
                 # Check whether tile is walkable
@@ -163,7 +157,7 @@ def BFS(agent_position, coins, field):
             path.append(current)
             current = parent_map[current]
 
-        # Currently: coin -> ... -> agent
+
         path.reverse()
 
         # Number of movements
@@ -203,7 +197,7 @@ def BFS_crate(agent_position, field):
             crate_x = x + dx
             crate_y = y + dy
 
-            if 0 <= crate_x < GRID_SIZE and 0 <= crate_y < GRID_SIZE:
+            if 0 <= crate_x < field.shape[0] and 0 <= crate_y < field.shape[1]:
 
                 if field[crate_x][crate_y] == 1:
 
@@ -227,8 +221,8 @@ def BFS_crate(agent_position, field):
             nx = x + dx
             ny = y + dy
 
-            if not (0 <= nx < GRID_SIZE and
-                    0 <= ny < GRID_SIZE):
+            if not (0 <= nx < field.shape[0] and
+                    0 <= ny < field.shape[1]):
                 continue
 
             # Only walk on empty tiles
@@ -273,14 +267,11 @@ def BFS_safe(agent_position, field, danger_map):
 
         x, y = current
 
-        # ------------------------------------------------
         # Check whether current tile is safe at this time
-        # ------------------------------------------------
 
         danger_value = danger_map[x,y]
 
         if danger_value == 0:
-            # We found a safe destination
             path = []
 
             state = (current, time)
@@ -294,18 +285,16 @@ def BFS_safe(agent_position, field, danger_map):
 
             return len(path) - 1, path, current
 
-        # ------------------------------------------------
         # Explore neighboring tiles
-        # ------------------------------------------------
 
         for dx, dy in directions:
 
             nx = x + dx
             ny = y + dy
 
-            # Boundary check
-            if not (0 <= nx < GRID_SIZE and
-                    0 <= ny < GRID_SIZE):
+
+            if not (0 <= nx < field.shape[0] and
+                    0 <= ny < field.shape[1]):
                 continue
 
             # Tile must be walkable
@@ -314,14 +303,11 @@ def BFS_safe(agent_position, field, danger_map):
 
             next_time = time + 1
 
-            # ------------------------------------------------
             # Convert danger value into explosion timing
-            #
             # 0.25 -> 3 steps
             # 0.50 -> 2 steps
             # 0.75 -> 1 step
             # 1.00 -> 0 steps
-            # ------------------------------------------------
 
             danger_value = danger_map[nx][ny]
 
@@ -420,10 +406,7 @@ def state_to_features(game_state: dict, action: str) -> np.ndarray:
     #FEATURE: Future danger of destination (how imminent the bomb threat is.)
     destination_danger = dangerous_map[eval_x,eval_y]    
     destination_explosion = int(explosion_map[eval_x,eval_y] > 0)
-
-    #!!!! long coridor bombs are still problem.
      
-
     #Coin Features 
     self_distance, path,closest_coin_coord = BFS((x,y),coins,field)
 
@@ -480,7 +463,7 @@ def state_to_features(game_state: dict, action: str) -> np.ndarray:
 
     crate_distance = 0.0
     distance_after_action,_,_ = BFS_crate((eval_x,eval_y),field)
-    #if crate_coord != None and len(path) > 1:
+
     if bomb_available and crate_coord is not None and len(path) > 1:
         crate_distance = 1.0 - (distance_after_action / 16.0)
         #closer to crate →  ~1
@@ -550,8 +533,3 @@ def act(self, game_state: dict) -> str:
     
     return action
 
-
-#TO DO LIST
-#bomb append righ after drop (for every agent and self)
-#Long coridor bombing escape feature
-#make conditional coin collection rather than crate searching

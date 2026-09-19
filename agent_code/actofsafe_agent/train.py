@@ -49,9 +49,9 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     #Error
     error = target - current_q
 
-    #custom env 
-    if self_action == "BOMB":  #crate_bombing feature
-        if phi[-3] == 1:
+    #custom event for reward dropping a bomb next to crate and penalty dropping a bomb any placa than next to crate 
+    if self_action == "BOMB": 
+        if phi[-3] == 1:  #phi[-3] is crate_bombing feature
             events.append(BOMB_NEXT_TO_CRATE)
         else:
             events.append(BOMB_NOT_NEXT_TO_CRATE)
@@ -130,9 +130,7 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
 
 def reward_from_events(self, events: List[str]) -> float:
     """
-    
-    Here you can modify the rewards your agent get so as to en/discourage
-    certain behavior.
+    Reward design for custom and game events
     """
     game_rewards = {
         e.SURVIVED_ROUND: 0.1,
@@ -142,6 +140,8 @@ def reward_from_events(self, events: List[str]) -> float:
         e.INVALID_ACTION: -0.5,
         e.KILLED_SELF: -2.0,
         e.GOT_KILLED: -2.0,
+        
+        #Custom added events
         BOMB_NEXT_TO_CRATE: 0.1,
         BOMB_NOT_NEXT_TO_CRATE: -1.0, 
 

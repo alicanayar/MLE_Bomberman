@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 
 # Load results
-with open("c:/Users/msı/Desktop/Universitat Heidelberg/MLE/bomberman/bomberman_rl/agent_code/user_agent/training_results.pkl", "rb") as file:
+with open("c:/Users/msı/Desktop/Universitat Heidelberg/MLE/bomberman/bomberman_rl/agent_code/actofsafe_agent/training_results.pkl", "rb") as file:
     results = pickle.load(file)
 
 
