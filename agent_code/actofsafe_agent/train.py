@@ -115,7 +115,7 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
         pickle.dump(results, file)
 
     # Store the model
-    with open("my-saved-model.pt", "wb") as file:
+    with open("actofsafe-saved-model.pt", "wb") as file:
         pickle.dump(self.weights, file)
 
     # Reset episode statistics

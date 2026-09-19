@@ -10,7 +10,7 @@ NUM_FEATURES = 13
 
 def setup(self):
     try:
-        with open("my-saved-model.pt", "rb") as file:
+        with open("actofsafe-saved-model.pt", "rb") as file:
             self.weights = pickle.load(file)
 
     except FileNotFoundError:
@@ -21,7 +21,7 @@ def setup(self):
 
 def bomb_will_hit_crate(position, field, bomb_range=3):
     """
-    Returns True if a bomb at `position` would hit at least one crate.
+    Returns True if a bomb at position would hit at least one crate.
     """
 
     x, y = position
